@@ -1,0 +1,110 @@
+<html>
+  <head>
+    <script src='https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js'></script>
+    <link href='https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css' rel='stylesheet' />
+    <style>
+* {
+    margin: 0;
+}
+#main {
+    display: grid;
+    width: 100vw;
+    height: 100vh;
+    background-color:darkslategray;
+}
+#map {
+    width: 100%;
+    height: 100%;
+}
+</style>
+</head>
+  <body>
+    <h1>Sepp</h1>
+    Lat: <input id="lat" value="17"> Lon: <input id="lon" value="13">
+    <button id="sendbutton">Send Lat Lon to Hias</button>
+    <div id='main'>      
+      <div id="map"></div>      
+    </div>
+    <script defer type="module">
+      // ES6 modules can be natively used by set the script type
+      // to "module". Now we can use native imports.
+      import {
+        connect,
+        StringCodec,
+      } from "https://cdn.jsdelivr.net/npm/nats.ws@1.10.0/esm/nats.js";
+
+      const map = new maplibregl.Map({
+        container: 'map',      
+        style: 'https://demotiles.maplibre.org/style.json', // stylesheet location
+        center: [-74.5, 40], // starting position [lng, lat]
+        zoom: 4 // starting zoom
+      });
+
+      const sendButton = document.getElementById("sendbutton");
+      sendButton.addEventListener("click", () => {
+        const lat = document.getElementById("lat").value;
+        const lon = document.getElementById("lon").value;
+        const msg = {cmd: "set_center", lat, lon};
+        nc.publish("hias",sc.encode(JSON.stringify(msg)));
+      });
+      
+
+      // Initialize a string codec for encoding and decoding message data.
+      // This is because NATS message data are just byte arrays, so proper
+      // encoding and decoding needs to be performed when using the working
+      // with the message data.
+      // See also JSONCodec.
+      const sc = new StringCodec();
+
+      // Establish a connection to the NATS demo server. This uses the
+      // native WebSocket support built into the NATS server.
+      const nc = await connect({
+        servers: ["ws://localhost:8090"],
+      });
+
+      // Subscribe to the "echo" subject and define a message
+      // handler that will respond to the requester.
+      const sub = nc.subscribe("sepp");
+      const handle = (msg) => {
+        //console.log(msg.data);
+        //console.log(`Received a request: ${sc.decode(msg.data)}`);
+        //msg.respond(msg.data);
+        const decoded = JSON.parse(sc.decode(msg.data));
+        console.log(decoded);        
+        switch(decoded.cmd) {
+          case "set_center": {
+            map.setCenter([decoded.lon,decoded.lat]);
+            break;
+          }
+          case "set_zoom": {
+            map.setZoom(decoded.zoom);
+            break;
+          }
+        }
+
+
+      }
+
+      // Wait to receive messages from the subscription and handle them
+      // asynchronously..
+      (async () => {
+        for await (const msg of sub) handle(msg)
+      })();
+
+      // Now we can send a couple requests to that subject. Note how we
+      // are encoding the string data on request and decoding the reply
+      // message data.
+      // let rep = await nc.request("echo", sc.encode("Hello!"));
+      // console.log(`Received a reply: ${sc.decode(rep.data)}`);
+
+      // rep = await nc.request("echo", sc.encode("World!"));
+      // console.log(`Received a reply: ${sc.decode(rep.data)}`);
+
+      // Finally drain the connection which will handle any outstanding
+      // messages before closing the connection.
+      //nc.drain();
+    </script>
+
+    
+  </body>
+</html>
