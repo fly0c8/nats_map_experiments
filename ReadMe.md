@@ -17,3 +17,28 @@ send commands to sepp's map:
 `nats pub sepp '{"cmd":"set_zoom","zoom":1}'`
 
 
+############
+# nats cli #
+############
+pub/sub:
+    nats sub msg.test
+    nats.sub msg.>          # all subtopics
+    nats sub msg.*          # immediate subtopic only
+
+    nats pub msg.test "hello world"
+    nats pub msg.test.hello "hello world"
+
+req/reply:
+    nats reply help.please 'OK, I CAN HELP!!!'
+    nats request help.please 'I need help!'
+
+queuegroups:
+    nats reply foo "service instance A Reply# {{Count}}"
+    nats reply foo "service instance B Reply# {{Count}}"
+    nats reply foo "service instance C Reply# {{Count}}"
+    nats request foo --count 10 "Request {{Count}}"
+
+
+
+
+
